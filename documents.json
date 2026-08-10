@@ -1,0 +1,10 @@
+[
+    {
+        "document_id": "ef136d2c-e9a8-487c-903f-ab09a5b1efb8",
+        "filename": "test_chunking.txt",
+        "file_path": "uploads\\ef136d2c-e9a8-487c-903f-ab09a5b1efb8.txt",
+        "pages_processed": 1,
+        "chunks_created": 1,
+        "status": "ingested"
+    }
+]

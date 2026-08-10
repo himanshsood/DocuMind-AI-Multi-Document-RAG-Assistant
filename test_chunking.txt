@@ -1,0 +1,41 @@
+```python
+from app.services.extraction import extract_text
+from app.services.chunking import chunk_pages
+
+
+document_id = "test-document-123"
+file_path = "uploads/YOUR_FILE_NAME.pdf"
+filename = "company_policy.pdf"
+
+
+# Step 1: Extract pages
+pages = extract_text(file_path)
+
+print(f"Extracted pages: {len(pages)}")
+
+
+# Step 2: Chunk pages
+chunks = chunk_pages(
+    pages=pages,
+    document_id=document_id,
+    filename=filename
+)
+
+
+print(f"Total chunks: {len(chunks)}")
+
+
+# Step 3: Print chunks
+for chunk in chunks:
+
+    print("\n" + "=" * 80)
+
+    print("CHUNK ID:")
+    print(chunk["metadata"]["chunk_id"])
+
+    print("\nTEXT:")
+    print(chunk["text"])
+
+    print("\nMETADATA:")
+    print(chunk["metadata"])
+```
