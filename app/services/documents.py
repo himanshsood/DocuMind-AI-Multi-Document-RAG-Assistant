@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,19 +28,25 @@ def create_document_record(
     file_path: str,
     file_hash: str,
     file_size: int,
-    chunks_count: int
+    chunks_count: int,
+    uploaded_at: datetime | None = None
 ) -> DocumentRecord:
     """Persist document-level metadata outside Chroma."""
 
-    document = DocumentRecord(
-        document_id=document_id,
-        filename=filename,
-        file_type=Path(filename).suffix.lower().lstrip("."),
-        file_path=file_path,
-        file_hash=file_hash,
-        file_size=file_size,
-        chunks_count=chunks_count
-    )
+    document_data = {
+        "document_id": document_id,
+        "filename": filename,
+        "file_type": Path(filename).suffix.lower().lstrip("."),
+        "file_path": file_path,
+        "file_hash": file_hash,
+        "file_size": file_size,
+        "chunks_count": chunks_count
+    }
+
+    if uploaded_at is not None:
+        document_data["uploaded_at"] = uploaded_at
+
+    document = DocumentRecord(**document_data)
 
     db.add(document)
     db.commit()

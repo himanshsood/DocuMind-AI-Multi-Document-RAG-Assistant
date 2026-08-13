@@ -23,6 +23,8 @@ export default function DocumentList({
   isLoading,
   error,
   onDelete,
+  onSummary,
+  summaryStates,
   onAddDocuments,
 }) {
   return (
@@ -57,6 +59,8 @@ export default function DocumentList({
                 key={document.document_id}
                 document={document}
                 onDelete={onDelete}
+                onSummary={onSummary}
+                summaryState={summaryStates[document.document_id]}
               />
             ))}
           </div>

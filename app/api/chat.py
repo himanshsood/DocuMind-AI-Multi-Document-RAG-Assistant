@@ -15,7 +15,10 @@ def ask(request: AskRequest):
         return answer_question(
             question=request.question,
             top_k=request.top_k,
-            document_ids=request.document_ids
+            document_ids=request.document_ids,
+            file_types=request.file_types,
+            uploaded_after=request.uploaded_after,
+            uploaded_before=request.uploaded_before
         )
 
     except Exception as error:

@@ -20,7 +20,8 @@ text_splitter = RecursiveCharacterTextSplitter(
 def chunk_pages(
     pages: list[dict],
     document_id: str,
-    filename: str
+    filename: str,
+    extra_metadata: dict | None = None
 ) -> list[dict]:
     """
     Split extracted pages into chunks while preserving
@@ -45,16 +46,21 @@ def chunk_pages(
 
             chunk_id = f"{document_id}_chunk_{chunk_index}"
 
+            metadata = {
+                "chunk_id": chunk_id,
+                "document_id": document_id,
+                "filename": filename,
+                "page_number": page_number,
+                "chunk_index": chunk_index
+            }
+
+            if extra_metadata:
+                metadata.update(extra_metadata)
+
             chunks.append(
                 {
                     "text": chunk_text,
-                    "metadata": {
-                        "chunk_id": chunk_id,
-                        "document_id": document_id,
-                        "filename": filename,
-                        "page_number": page_number,
-                        "chunk_index": chunk_index
-                    }
+                    "metadata": metadata
                 }
             )
 

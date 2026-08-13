@@ -24,6 +24,7 @@ import {
   deleteDocument,
   getDocuments,
   ingestDocument,
+  summarizeDocument,
 } from "./services/api.js";
 
 const PAGE_TITLES = {
@@ -94,11 +95,97 @@ function LibrarySidebar({ documents, activeCount }) {
   );
 }
 
-function DocumentSelector({ documents, selectedDocumentIds, onToggle }) {
+function DocumentSelector({
+  documents,
+  selectedDocumentIds,
+  selectedFileTypes,
+  uploadedAfter,
+  uploadedBefore,
+  onToggleDocument,
+  onToggleFileType,
+  onUploadedAfterChange,
+  onUploadedBeforeChange,
+  onClearFilters,
+}) {
+  const fileTypes = Array.from(
+    new Set(documents.map((document) => document.file_type).filter(Boolean)),
+  ).sort();
+  const hasFilters =
+    selectedDocumentIds.length ||
+    selectedFileTypes.length ||
+    uploadedAfter ||
+    uploadedBefore;
+
   return (
     <aside className="glass-panel rounded-lg p-5 lg:sticky lg:top-24 lg:self-start">
-      <h2 className="text-sm font-semibold text-ink">Query documents</h2>
-      <p className="mt-1 text-xs text-muted">Select documents to focus retrieval.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-ink">Retrieval filters</h2>
+          <p className="mt-1 text-xs text-muted">Limit answers to specific metadata.</p>
+        </div>
+        {hasFilters ? (
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-accent transition hover:bg-skySoft"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      {fileTypes.length ? (
+        <div className="mt-4">
+          <h3 className="text-xs font-semibold uppercase tracking-normal text-muted">
+            File type
+          </h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {fileTypes.map((fileType) => {
+              const selected = selectedFileTypes.includes(fileType);
+
+              return (
+                <button
+                  key={fileType}
+                  type="button"
+                  onClick={() => onToggleFileType(fileType)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold uppercase transition ${
+                    selected
+                      ? "border-sky bg-accent text-white"
+                      : "border-white/70 bg-white/55 text-muted hover:border-sky hover:text-accent"
+                  }`}
+                >
+                  {fileType}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-3">
+        <label className="text-xs font-semibold uppercase tracking-normal text-muted">
+          Uploaded after
+          <input
+            type="date"
+            value={uploadedAfter}
+            onChange={(event) => onUploadedAfterChange(event.target.value)}
+            className="mt-2 min-h-10 w-full rounded-lg border border-white/70 bg-white/70 px-3 text-sm font-normal normal-case text-ink"
+          />
+        </label>
+        <label className="text-xs font-semibold uppercase tracking-normal text-muted">
+          Uploaded before
+          <input
+            type="date"
+            value={uploadedBefore}
+            onChange={(event) => onUploadedBeforeChange(event.target.value)}
+            className="mt-2 min-h-10 w-full rounded-lg border border-white/70 bg-white/70 px-3 text-sm font-normal normal-case text-ink"
+          />
+        </label>
+      </div>
+
+      <h3 className="mt-5 text-xs font-semibold uppercase tracking-normal text-muted">
+        Documents
+      </h3>
       <div className="mt-4 space-y-2">
         {documents.length ? (
           documents.map((document) => {
@@ -116,7 +203,7 @@ function DocumentSelector({ documents, selectedDocumentIds, onToggle }) {
                 <input
                   type="checkbox"
                   checked={selected}
-                  onChange={() => onToggle(document.document_id)}
+                  onChange={() => onToggleDocument(document.document_id)}
                   className="mt-1 h-4 w-4 accent-blue-900"
                 />
                 <span className="min-w-0">
@@ -240,6 +327,10 @@ export default function App() {
   const [askError, setAskError] = useState("");
   const [isAsking, setIsAsking] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState([]);
+  const [selectedFileTypes, setSelectedFileTypes] = useState([]);
+  const [uploadedAfter, setUploadedAfter] = useState("");
+  const [uploadedBefore, setUploadedBefore] = useState("");
+  const [summaryStates, setSummaryStates] = useState({});
   const [documentToDelete, setDocumentToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -274,6 +365,12 @@ export default function App() {
           normalizedDocuments.map((document) => document.document_id),
         );
         return currentIds.filter((documentId) => availableIds.has(documentId));
+      });
+      setSelectedFileTypes((currentTypes) => {
+        const availableTypes = new Set(
+          normalizedDocuments.map((document) => document.file_type).filter(Boolean),
+        );
+        return currentTypes.filter((fileType) => availableTypes.has(fileType));
       });
     } catch (error) {
       setDocumentsError(
@@ -403,7 +500,14 @@ export default function App() {
     setAskError("");
 
     try {
-      const response = await askQuestion(askedQuestion, topK, selectedDocumentIds);
+      const response = await askQuestion({
+        question: askedQuestion,
+        topK,
+        documentIds: selectedDocumentIds,
+        fileTypes: selectedFileTypes,
+        uploadedAfter: uploadedAfter ? `${uploadedAfter}T00:00:00Z` : "",
+        uploadedBefore: uploadedBefore ? `${uploadedBefore}T23:59:59Z` : "",
+      });
       setConversation((currentMessages) => [
         ...currentMessages,
         {
@@ -429,6 +533,58 @@ export default function App() {
     );
   }
 
+  function toggleSelectedFileType(fileType) {
+    setSelectedFileTypes((currentTypes) =>
+      currentTypes.includes(fileType)
+        ? currentTypes.filter((currentType) => currentType !== fileType)
+        : [...currentTypes, fileType],
+    );
+  }
+
+  function clearChatFilters() {
+    setSelectedDocumentIds([]);
+    setSelectedFileTypes([]);
+    setUploadedAfter("");
+    setUploadedBefore("");
+  }
+
+  async function handleSummarizeDocument(document) {
+    if (summaryStates[document.document_id]?.status === "loading") {
+      return;
+    }
+
+    setSummaryStates((currentStates) => ({
+      ...currentStates,
+      [document.document_id]: {
+        status: "loading",
+        data: currentStates[document.document_id]?.data || null,
+        error: "",
+      },
+    }));
+
+    try {
+      const summary = await summarizeDocument(document.document_id);
+
+      setSummaryStates((currentStates) => ({
+        ...currentStates,
+        [document.document_id]: {
+          status: "success",
+          data: summary,
+          error: "",
+        },
+      }));
+    } catch (error) {
+      setSummaryStates((currentStates) => ({
+        ...currentStates,
+        [document.document_id]: {
+          status: "error",
+          data: currentStates[document.document_id]?.data || null,
+          error: friendlyError(error, "Couldn't summarize this document. Please try again."),
+        },
+      }));
+    }
+  }
+
   async function handleConfirmDelete() {
     if (!documentToDelete || isDeleting) {
       return;
@@ -447,6 +603,11 @@ export default function App() {
       setSelectedDocumentIds((currentIds) =>
         currentIds.filter((documentId) => documentId !== documentToDelete.document_id),
       );
+      setSummaryStates((currentStates) => {
+        const nextStates = { ...currentStates };
+        delete nextStates[documentToDelete.document_id];
+        return nextStates;
+      });
 
       if (latestSources.has(documentToDelete.filename)) {
         setConversation([]);
@@ -502,6 +663,8 @@ export default function App() {
                 isLoading={documentsLoading}
                 error={documentsError}
                 onDelete={setDocumentToDelete}
+                onSummary={handleSummarizeDocument}
+                summaryStates={summaryStates}
                 onAddDocuments={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               />
             </div>
@@ -522,13 +685,20 @@ export default function App() {
             <DocumentSelector
               documents={documents}
               selectedDocumentIds={selectedDocumentIds}
-              onToggle={toggleSelectedDocument}
+              selectedFileTypes={selectedFileTypes}
+              uploadedAfter={uploadedAfter}
+              uploadedBefore={uploadedBefore}
+              onToggleDocument={toggleSelectedDocument}
+              onToggleFileType={toggleSelectedFileType}
+              onUploadedAfterChange={setUploadedAfter}
+              onUploadedBeforeChange={setUploadedBefore}
+              onClearFilters={clearChatFilters}
             />
-            <div className="flex min-h-[680px] flex-col gap-5">
+            <div className="flex min-h-[560px] flex-col gap-5">
               <div className="flex-1">
                 <ConversationHistory messages={conversation} />
               </div>
-              <div className="sticky bottom-4">
+              <div className="sticky bottom-3 z-10">
                 <QuestionBox
                   question={question}
                   topK={topK}

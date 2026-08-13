@@ -1,4 +1,7 @@
 
+from datetime import datetime, timezone
+from pathlib import Path
+
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
@@ -45,6 +48,8 @@ async def ingest_document(
 
     file_hash = calculate_file_hash(contents) # This creates a unique fingerprint of the file's contents. same files will have same hash 
     file_size = len(contents) # Since contents is bytes, len() gives the number of bytes.
+    file_type = Path(filename).suffix.lower().lstrip(".")
+    uploaded_at = datetime.now(timezone.utc)
 
     # Check if the uploaded document already exists in the database.
     duplicate = find_duplicate_document(
@@ -85,7 +90,12 @@ async def ingest_document(
     chunks = chunk_pages(
         pages=pages,
         document_id=document_id,
-        filename=filename
+        filename=filename,
+        extra_metadata={
+            "file_type": file_type,
+            "uploaded_at": uploaded_at.isoformat(),
+            "uploaded_at_timestamp": int(uploaded_at.timestamp())
+        }
     )
 
     # suppose if 0 chunks, return
@@ -127,7 +137,8 @@ async def ingest_document(
         file_path=str(file_path),
         file_hash=file_hash,
         file_size=file_size,
-        chunks_count=len(chunks)
+        chunks_count=len(chunks),
+        uploaded_at=uploaded_at
     )
 
     return document_details

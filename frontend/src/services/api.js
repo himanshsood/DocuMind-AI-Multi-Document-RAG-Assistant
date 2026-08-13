@@ -60,7 +60,21 @@ export function deleteDocument(documentId) {
   });
 }
 
-export function askQuestion(question, topK, documentIds = []) {
+export function summarizeDocument(documentId) {
+  return request(`/documents/${documentId}/summary`, {
+    method: "POST",
+    timeoutMs: LONG_REQUEST_TIMEOUT_MS,
+  });
+}
+
+export function askQuestion({
+  question,
+  topK,
+  documentIds = [],
+  fileTypes = [],
+  uploadedAfter = "",
+  uploadedBefore = "",
+}) {
   return request("/ask", {
     method: "POST",
     timeoutMs: LONG_REQUEST_TIMEOUT_MS,
@@ -71,6 +85,9 @@ export function askQuestion(question, topK, documentIds = []) {
       question,
       top_k: topK,
       document_ids: documentIds.length ? documentIds : null,
+      file_types: fileTypes.length ? fileTypes : null,
+      uploaded_after: uploadedAfter || null,
+      uploaded_before: uploadedBefore || null,
     }),
   });
 }

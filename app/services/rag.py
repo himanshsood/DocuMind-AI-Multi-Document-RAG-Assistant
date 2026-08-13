@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from app.config import DEFAULT_TOP_K, LLM_MODEL_NAME, MAX_RETRIEVAL_DISTANCE
@@ -112,14 +114,20 @@ def get_unique_sources(retrieved_chunks: list[dict]) -> list[dict]:
 def answer_question(
     question: str,
     top_k: int = DEFAULT_TOP_K,
-    document_ids: list[str] | None = None
+    document_ids: list[str] | None = None,
+    file_types: list[str] | None = None,
+    uploaded_after: datetime | None = None,
+    uploaded_before: datetime | None = None
 ) -> dict:
     """Retrieve relevant chunks and generate a cited answer with FLAN-T5."""
 
     retrieved_chunks = search_documents(
         query=question,
         top_k=top_k,
-        document_ids=document_ids
+        document_ids=document_ids,
+        file_types=file_types,
+        uploaded_after=uploaded_after,
+        uploaded_before=uploaded_before
     )
 
     relevant_chunks = keep_relevant_chunks(retrieved_chunks)

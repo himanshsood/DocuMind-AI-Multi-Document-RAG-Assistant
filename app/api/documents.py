@@ -2,9 +2,14 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.schemas import DocumentDeleteResponse, DocumentListItem
+from app.models.schemas import (
+    DocumentDeleteResponse,
+    DocumentListItem,
+    DocumentSummaryResponse,
+)
 from app.services.documents import delete_document, list_documents
 from app.services.ingestion import ingest_document
+from app.services.summaries import summarize_document
 from app.utils.file_utils import save_upload
 
 
@@ -84,6 +89,32 @@ def get_documents(
     db: Session = Depends(get_db)
 ):
     return list_documents(db)
+
+
+@router.post("/{document_id}/summary", response_model=DocumentSummaryResponse)
+def summarize(
+    document_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        summary = summarize_document(
+            db=db,
+            document_id=document_id
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    if summary is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found."
+        )
+
+    return summary
 
 
 @router.delete("/{document_id}", response_model=DocumentDeleteResponse)

@@ -67,6 +67,31 @@ class RagInsufficientContextTests(unittest.TestCase):
         )
         mock_generate_answer.assert_not_called()
 
+    @patch("app.services.rag.generate_answer")
+    @patch("app.services.rag.search_documents")
+    def test_answer_question_passes_metadata_filters_to_search(
+        self,
+        mock_search_documents,
+        mock_generate_answer,
+    ):
+        mock_search_documents.return_value = []
+
+        answer_question(
+            question="What is the leave policy?",
+            document_ids=["doc-1"],
+            file_types=["pdf"],
+        )
+
+        mock_search_documents.assert_called_once_with(
+            query="What is the leave policy?",
+            top_k=5,
+            document_ids=["doc-1"],
+            file_types=["pdf"],
+            uploaded_after=None,
+            uploaded_before=None,
+        )
+        mock_generate_answer.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
